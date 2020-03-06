@@ -1,0 +1,31 @@
+First we convert the start recording date and time of the EEG (according to the given timezone of the EEG-equipment in the environment variable EEG_TZ or UTC if it is not set) from human readable format to a UNIX timestamp and save the result in the start_eeg shell variable. 
+
+The duration of the EEG record is computed using the recording rate (saved in the rate shell variable) and the number of all lines with data (tick-lines) in the eeg.xml file(saved in the numAllTicks shell variable). The command
+
+                 awk '$0 ~ /tick/ {print $0}' $2 > temp.xml
+filters only the lines containing "tick" xml tags from the eeg.xml file and writes them to the temporary file temp.xml.
+
+The duration of the larynx file is computed using the command
+                      
+                   soxi -D $3
+which returns the duration in seconds of an audio file. (Additionally the Swiss Army knife of sound processing SoX has been installed with the command: sudo apt-get install sox)
+
+ After computing the start and end recording moments of the EEG and the laryngograph and saving the results as UNIX timestamps in start_eeg, end_eeg, start_lar, end_lar, we read every line from the timetable.log file in a while-loop and split it into name, start and end of the stimul. If both start and end are within  [start_eeg, end_eeg] and [start_lar, end_lar], the stimul is long enough and it is not in the "checked" list (checked.txt), then the stimul is processed, otherwise it is skipped with an appropriate warning. 
+If the conditions are satisfied, we calculate the number of ticks recorded until the beginning (shell variable numTicks1) and the number until the end of the stimul (shell variable numTicks2) according to the formula:
+
+              (time in seconds) * rate
+
+The <tick>...</tick> tags with (line) numbers between numTicks1 and numTicks2 are written to a new file named <stimul>_eeg.xml in the output directory.(awk-command)
+The seconds from the larynx.wav file corresponding to the stimul are cut and written to a new audio file in the output directory named <stimul>_lar.wav.(sox-command)
+
+At the end the temporary files temp.xml and checked.txt are removed.
+
+References:
+
+https://www.unixtimestamp.com/index.php
+https://www.gnu.org/software/coreutils/manual/html_node/Specifying-time-zone-rules.html#Specifying-time-zone-rules
+http://sox.sourceforge.net
+https://linux.die.net/man/1/sox
+http://www.grymoire.com/Unix/Awk.html
+https://www.gnu.org/software/gawk/manual/gawk.html
+
